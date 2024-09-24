@@ -27,7 +27,7 @@ test:
 	$(SBT) "testOnly adder.SimpleTest" --color=always 2>&1 | tee test.log
 
 wave:
-	gtkwave "test_run_dir/SimpleTest_should_pass/Cmm.vcd"
+	gtkwave "test_run_dir/DUT_should_pass/Adder.vcd"
 
 comp:
 	$(VCS) 

@@ -10,7 +10,7 @@ import _root_.circt.stage.ChiselStage
 class SimpleTest extends AnyFlatSpec with ChiselScalatestTester {
   "DUT" should "pass" in {
     test(new Adder)
-    .withAnnotations(Seq(VerilatorBackendAnnotation))  { dut =>
+    .withAnnotations(Seq(WriteVcdAnnotation))  { dut =>
       dut.reset.poke(true.B)
       dut.clock.step()
       dut.reset.poke(false.B)
