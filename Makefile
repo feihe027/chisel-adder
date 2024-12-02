@@ -5,11 +5,34 @@ VCS = vcs -full64 -sverilog -timescale=1ns/1ns 	+v2k -debug_access+all -kdb -lca
 # Generate Verilog code
 run:
 	sbt "runMain adder.Main"
-	@sed -i 's/\/\/ @.*//g' hdl/*.v
-	@find hdl/ -type f -name "*.v" > hdl/filelist.f
 
 .PHONY: clean test wave comp verdi sim vlt vlt_wave
+
 clean:
+ifeq ($(OS),Windows_NT)	
+	@if exist verdiLog rmdir /s /q verdiLog
+	@if exist project rmdir /s /q project
+	@if exist obj_dir rmdir /s /q obj_dir
+	@if exist logs rmdir /s /q logs
+	@if exist hdl rmdir /s /q hdl
+	@if exist generated rmdir /s /q generated
+	@if exist csrc rmdir /s /q csrc
+	@if exist target rmdir /s /q target
+	@if exist simv.daidir rmdir /s /q simv.daidir
+	@if exist simv del /q simv
+	@if exist ucli.key del /q ucli.key
+	@if exist novas_dump.log del /q novas_dump.log
+	@if exist *.fsdb del /q *.fsdb
+	@if exist *.vcd del /q *.vcd
+	@if exist *.sv del /q *.sv
+	@if exist *.v del /q *.v
+	@if exist novas.* del /q novas.*
+	@if exist test_run_dir rmdir /s /q test_run_dir
+	@if exist *.fir del /q *.fir
+	@if exist *_obj del /q *_obj
+	@if exist *.anno.json del /q *.anno.json
+	@if exist *.log del /q *.log
+else
 	@rm -rf verdiLog
 	@rm -rf project
 	@rm -rf obj_dir
@@ -22,9 +45,10 @@ clean:
 	@rm -f simv ucli.key novas_dump.log *.fsdb *.vcd *.sv *.v novas.* 
 	@rm -rf test_run_dir
 	@rm -f *.fir *_obj *.anno.json *.log
+endif
 
 test:
-	$(SBT) "testOnly adder.SimpleTest" --color=always 2>&1 | tee test.log
+	$(SBT) "testOnly adder.SimpleTest" --color=always 2>&1 
 
 wave:
 	gtkwave "test_run_dir/DUT_should_pass/Adder.vcd"
