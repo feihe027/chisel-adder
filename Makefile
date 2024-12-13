@@ -5,6 +5,9 @@ VCS = vcs -full64 -sverilog -timescale=1ns/1ns 	+v2k -debug_access+all -kdb -lca
 # Generate Verilog code
 run:
 	sbt "runMain adder.Main"
+ifneq ($(OS),Windows_NT)	
+    @sed -i 's/\/\/ @.*//g' hdl/*.v
+endif
 
 .PHONY: clean test wave comp verdi sim vlt vlt_wave
 
