@@ -6,52 +6,81 @@ import chisel3.util._
 
 class FullAdder extends Module {
   val io = IO(new Bundle {
-    val a = Input(Bool())  // ÊäÈë A
-    val b = Input(Bool())  // ÊäÈë B
-    val cin = Input(Bool()) // Ç°Ò»¼¶µÄ½øÎ»
-    val sum = Output(Bool()) // ºÍÊä³ö
-    val cout = Output(Bool()) // ½øÎ»Êä³ö
+    val a = Input(Bool())  // è¾“å…¥ A
+    val b = Input(Bool())  // è¾“å…¥ B
+    val cin = Input(Bool()) // å‰ä¸€çº§çš„è¿›ä½
+    val sum = Output(Bool()) // å’Œè¾“å‡º
+    val cout = Output(Bool()) // è¿›ä½è¾“å‡º
   })
 
-  // Âß¼­±í´ïÊ½
+  // é€»è¾‘è¡¨è¾¾å¼
   io.sum := io.a ^ io.b ^ io.cin
   io.cout := (io.a & io.b) | (io.cin & (io.a ^ io.b))
 }
 
-class Adder4Bit extends Module {  
-    val io = IO(new Bundle {  
-    val a = Input(UInt(4.W))  
-    val b = Input(UInt(4.W))  
-    val cin = Input(Bool())   
-    val sum = Output(UInt(4.W))   
-    val cout = Output(Bool())  
-    })  
 
-    // ´´½¨4¸öÈ«¼ÓÆ÷²¢Ö±½ÓÁ¬½Ó
-    val fas = Seq.fill(4)(Module(new FullAdder))
+class CarryLogicModule(width: Int) extends Module {
+  val io = IO(new Bundle {
+    val p = Input(UInt(width.W))  // ä¼ æ’­ä¿¡å·
+    val g = Input(UInt(width.W))  // ç”Ÿæˆä¿¡å·
+    val cin = Input(Bool())       // åˆå§‹è¿›ä½
+    val c = Output(UInt((width + 1).W))  // è¿›ä½è¾“å‡º
+  })
 
-    // Ö±½ÓÁ¬½Ó½øÎ»ºÍÊäÈë
-    fas.zip(fas.tail).foreach { case (curr, next) => 
-    next.io.cin := curr.io.cout 
-    }
+  val c = RegInit(VecInit(Seq.fill(width + 1)(false.B)))
+  c(0) := io.cin
 
-    // ³õÊ¼½øÎ»
-    fas(0).io.cin := io.cin
+  val pVec = VecInit(io.p.asBools)
+  val gVec = VecInit(io.g.asBools)
 
-    // ²¢ÐÐÁ¬½ÓÊäÈëºÍÊä³ö
-    fas.zipWithIndex.foreach { case (fa, i) =>
-        fa.io.a := io.a(i)
-        fa.io.b := io.b(i)
-    }
+  for (i <- 0 until width) {
+    c(i + 1) := gVec(i) | (pVec(i) & c(i))
+  }
 
-    // Ê¹ÓÃVecºÍasUIntÕýÈ·×ª»»
-    io.sum := VecInit(fas.map(_.io.sum)).asUInt
-    io.cout := fas.last.io.cout
+  io.c := c.asUInt
 }
+
+class CarryLookAheadAdder(width: Int) extends Module {
+  require(width > 0, "Width must be positive")
+
+  val io = IO(new Bundle {
+    val a = Input(UInt(width.W))
+    val b = Input(UInt(width.W))
+    val cin = Input(Bool())
+    val sum = Output(UInt(width.W))
+    val cout = Output(Bool())
+  })
+
+  // ç”Ÿæˆå’Œæ ¡éªŒä¿¡å·ï¼Œæ·»åŠ æ³¨é‡Šè¯´æ˜Ž
+  val p = VecInit((0 until width).map { i => 
+    // ä¼ æ’­ä¿¡å·ï¼šç›¸åŒä½å¼‚æˆ–
+    io.a(i) ^ io.b(i) 
+  })
+  
+  val g = VecInit((0 until width).map { i => 
+    // ç”Ÿæˆä¿¡å·ï¼šç›¸åŒä½ä¸Ž
+    io.a(i) & io.b(i) 
+  })
+
+  val carryLogic = Module(new CarryLogicModule(width))
+  carryLogic.io.p := p.asUInt
+  carryLogic.io.g := g.asUInt
+  carryLogic.io.cin := io.cin
+
+  // ä½¿ç”¨ zipWithIndex ç®€åŒ–å’Œçš„è®¡ç®—
+  val sum = VecInit(p.zip(carryLogic.io.c.asBools).map { 
+    case (pi, ci) => pi ^ ci 
+  })
+
+  io.sum := sum.asUInt
+  io.cout := carryLogic.io.c(width)
+}
+
+
 
 object Main extends App {
   emitVerilog(
-    new Adder4Bit,
+    new CarryLookAheadAdder(4),
     Array(
       "--emission-options=disableMemRandomization,disableRegisterRandomization",
       "--emit-modules=verilog", 
