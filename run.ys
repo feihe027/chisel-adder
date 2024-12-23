@@ -1,0 +1,20 @@
+# 读取Verilog源文件
+read_verilog hdl/Adder.v
+
+# 设置顶层模块
+hierarchy -top Adder
+
+# 执行综合优化
+proc
+opt
+techmap
+opt
+
+# 输出综合结果
+write_verilog synth.v
+
+# 显示电路结构
+# show 
+
+# 显示统计信息
+stat
