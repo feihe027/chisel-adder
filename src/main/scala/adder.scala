@@ -6,14 +6,14 @@ import chisel3.util._
 
 class FullAdder extends Module {
   val io = IO(new Bundle {
-    val a = Input(Bool())  // ÊäÈë A
-    val b = Input(Bool())  // ÊäÈë B
-    val cin = Input(Bool()) // Ç°Ò»¼¶µÄ½øÎ»
-    val sum = Output(Bool()) // ºÍÊä³ö
-    val cout = Output(Bool()) // ½øÎ»Êä³ö
+    val a = Input(Bool())  // è¾“å…¥ A
+    val b = Input(Bool())  // è¾“å…¥ B
+    val cin = Input(Bool()) // å‰ä¸€çº§çš„è¿›ä½
+    val sum = Output(Bool()) // å’Œè¾“å‡º
+    val cout = Output(Bool()) // è¿›ä½è¾“å‡º
   })
 
-  // Âß¼­±í´ïÊ½
+  // é€»è¾‘è¡¨è¾¾å¼
   io.sum := io.a ^ io.b ^ io.cin
   io.cout := (io.a & io.b) | (io.cin & (io.a ^ io.b))
 }
@@ -27,24 +27,24 @@ class Adder4Bit extends Module {
     val cout = Output(Bool())  
     })  
 
-    // ´´½¨4¸öÈ«¼ÓÆ÷²¢Ö±½ÓÁ¬½Ó
+    // åˆ›å»º4ä¸ªå…¨åŠ å™¨å¹¶ç›´æ¥è¿æ¥
     val fas = Seq.fill(4)(Module(new FullAdder))
 
-    // Ö±½ÓÁ¬½Ó½øÎ»ºÍÊäÈë
+    // ç›´æ¥è¿æ¥è¿›ä½å’Œè¾“å…¥
     fas.zip(fas.tail).foreach { case (curr, next) => 
     next.io.cin := curr.io.cout 
     }
 
-    // ³õÊ¼½øÎ»
+    // åˆå§‹è¿›ä½
     fas(0).io.cin := io.cin
 
-    // ²¢ĞĞÁ¬½ÓÊäÈëºÍÊä³ö
+    // å¹¶è¡Œè¿æ¥è¾“å…¥å’Œè¾“å‡º
     fas.zipWithIndex.foreach { case (fa, i) =>
         fa.io.a := io.a(i)
         fa.io.b := io.b(i)
     }
 
-    // Ê¹ÓÃVecºÍasUIntÕıÈ·×ª»»
+    // ä½¿ç”¨Vecå’ŒasUIntæ­£ç¡®è½¬æ¢
     io.sum := VecInit(fas.map(_.io.sum)).asUInt
     io.cout := fas.last.io.cout
 }
