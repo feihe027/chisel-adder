@@ -4,45 +4,8 @@ import _root_.circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
 
-class FullAdder extends Module {
-  val io = IO(new Bundle {
-    val a = Input(Bool())  // 输入 A
-    val b = Input(Bool())  // 输入 B
-    val cin = Input(Bool()) // 前一级的进位
-    val sum = Output(Bool()) // 和输出
-    val cout = Output(Bool()) // 进位输出
-  })
-
-  // 逻辑表达式
-  io.sum := io.a ^ io.b ^ io.cin
-  io.cout := (io.a & io.b) | (io.cin & (io.a ^ io.b))
-}
-
-
-class CarryLogicModule(width: Int) extends Module {
-  val io = IO(new Bundle {
-    val p = Input(UInt(width.W))  // 传播信号
-    val g = Input(UInt(width.W))  // 生成信号
-    val cin = Input(Bool())       // 初始进位
-    val c = Output(UInt((width + 1).W))  // 进位输出
-  })
-
-  val c = RegInit(VecInit(Seq.fill(width + 1)(false.B)))
-  c(0) := io.cin
-
-  val pVec = VecInit(io.p.asBools)
-  val gVec = VecInit(io.g.asBools)
-
-  for (i <- 0 until width) {
-    c(i + 1) := gVec(i) | (pVec(i) & c(i))
-  }
-
-  io.c := c.asUInt
-}
 
 class CarryLookAheadAdder(width: Int) extends Module {
-  require(width > 0, "Width must be positive")
-
   val io = IO(new Bundle {
     val a = Input(UInt(width.W))
     val b = Input(UInt(width.W))
@@ -50,32 +13,26 @@ class CarryLookAheadAdder(width: Int) extends Module {
     val sum = Output(UInt(width.W))
     val cout = Output(Bool())
   })
+  require(width > 0, "Width must be positive")
 
-  // 生成和校验信号，添加注释说明
-  val p = VecInit((0 until width).map { i => 
-    // 传播信号：相同位异或
-    io.a(i) ^ io.b(i) 
-  })
-  
-  val g = VecInit((0 until width).map { i => 
-    // 生成信号：相同位与
-    io.a(i) & io.b(i) 
-  })
+  // 生成信号和传播信号
+  val G = io.a & io.b
+  val P = io.a ^ io.b
 
-  val carryLogic = Module(new CarryLogicModule(width))
-  carryLogic.io.p := p.asUInt
-  carryLogic.io.g := g.asUInt
-  carryLogic.io.cin := io.cin
+  // 进位信号
+  val C = Wire(Vec(width + 1, UInt(1.W)))
+  C(0) := io.cin
 
-  // 使用 zipWithIndex 简化和的计算
-  val sum = VecInit(p.zip(carryLogic.io.c.asBools).map { 
-    case (pi, ci) => pi ^ ci 
-  })
+  for (i <- 0 until width) {
+    C(i + 1) := G(i) | (P(i) & C(i))
+  }
 
-  io.sum := sum.asUInt
-  io.cout := carryLogic.io.c(width)
+  // 和信号
+  io.sum := P ^ C.asUInt(width - 1, 0)
+
+  // 输出进位
+  io.cout := C(width)
 }
-
 
 
 object Main extends App {
